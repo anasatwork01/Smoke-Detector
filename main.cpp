@@ -45,3 +45,76 @@ int bootstrapESP8266(void) {
   // Connects to the host server (ThingSpeak) as a TCP Client.
   Serial.println("AT+CIPSTART=\"TCP\",\"" + host + "\"," + HTTP_PORT);
 }
+
+
+void setup()
+{
+    pinMode(redled,OUTPUT);
+    pinMode(greenled,OUTPUT);
+    pinMode(buzzer,OUTPUT);
+    pinMode(sensor,INPUT);
+    Serial.begin(9600);
+    lcd.begin(16,2);
+    bootstrapESP8266();
+}
+
+void loop()
+{
+    int analogValue= analogRead(sensor);
+    Serial.print(analogValue);
+  
+  // Construct HTTP call.
+  String httpPacket_1 = "GET " + CHANNEL_FEED_URI_1 + String(analogValue) + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
+  int packetLength_1 = httpPacket_1.length();
+  
+  // Send the data to the server. Also send the packet length.
+  Serial.print("AT+CIPSEND=");
+  Serial.println(packetLength_1);
+  delay(10);
+  
+  Serial.print(httpPacket_1);
+  delay(10);
+  
+  
+  if (!Serial.find("SEND OK\r\n")) return;
+  
+if(analogValue>sensorThresh)
+{
+  
+digitalWrite(redled,HIGH);
+digitalWrite(greenled,LOW);
+tone(buzzer,1000,10000);
+lcd.clear();
+lcd.setCursor(0,1);
+lcd.print("ALERT");
+delay(1000);
+lcd.clear();
+lcd.setCursor(0,1);
+lcd.print("EVACUATE");
+delay(1000);
+}
+else
+{
+digitalWrite(greenled,HIGH);
+digitalWrite(redled,LOW);
+noTone(buzzer);
+lcd.clear();
+lcd.setCursor(0,0);
+lcd.print("SAFE");
+delay(1000);
+lcd.clear();
+lcd.setCursor(0,1);
+lcd.print("ALL CLEAR");
+delay(1000);
+}
+  delay(500);
+}
+
+// WIP.
+void close() {
+  // Gracefully close the connection.
+  Serial.print("AT+CIPCLOSE");
+  
+  // Else if fails, close anyway.
+  if (!Serial.find("OK")) return;
+}
